@@ -1,0 +1,84 @@
+<ROSETTASCRIPTS>
+	
+<SCOREFXNS>
+	<ScoreFunction name="scorefxn" weights="ref2015"/>
+</SCOREFXNS>
+
+<RESIDUE_SELECTORS>
+	<Chain name="chA" chains="A" />
+	<Chain name="chB" chains="B" />
+	<Chain name="chC" chains="C" />
+	<Or name="chains" selectors="chA,chB,chC" />
+	
+	<Not name="not_chA" selector="chA"/>
+	<Not name="not_chB" selector="chB"/>
+	<Not name="not_chC" selector="chC"/>
+	
+	<Neighborhood name="A_interface" distance="6" selector="chA" include_focus_in_subset="0" />
+	<Neighborhood name="B_interface" distance="6" selector="chB" include_focus_in_subset="0" />
+	<Neighborhood name="C_interface" distance="6" selector="chC" include_focus_in_subset="0" />
+	<Or name="interface" selectors="A_interface,B_interface,C_interface" />
+</RESIDUE_SELECTORS>
+
+<SIMPLE_METRICS>
+		<PerResidueEsmProbabilitiesMetric name="esm_probs" custom_type="esm_probs" model="esm2_t33_650M_UR50D" residue_selector="interface" write_pssm="esm2_interface.pssm"/>
+		<PseudoPerplexityMetric name="esm_perplexity" metric="esm_probs" custom_type="esm_pp"/>
+
+		<ProteinMPNNProbabilitiesMetric name="mpnn_probs" custom_type="mpnn_probs" residue_selector="interface" write_pssm="mpnn_interface.pssm" />
+		<PseudoPerplexityMetric name="mpnn_perplexity" metric="mpnn_probs" custom_type="mpnn_pp" />
+
+		MIFSTProbabilitiesMetric name="mifst_probs" custom_type="mifst_probs" residue_selector="interface" />
+		PseudoPerplexityMetric name="mifst_perplexity" metric="mifst_probs" custom_type="mifst_pp" />
+
+		<AverageProbabilitiesMetric name="avg_probs" custom_type="avg_probs" metrics="esm_probs,mpnn_probs"/>,mifst_probs" />
+		<PseudoPerplexityMetric name="avg_perplexity" metric="avg_probs" custom_type="avg_pp"/>
+
+		<CurrentProbabilityMetric name="current_probs" metric="avg_probs" custom_type="current_probs"/>
+</SIMPLE_METRICS>
+
+<FILTERS>
+		<ShapeComplementarity name="scA" min_sc="0.6" verbose="1" quick="0" residue_selector1="chA" residue_selector2="not_chA" write_int_area="true" write_median_dist="true" confidence="0"/>
+		<ShapeComplementarity name="scB" min_sc="0.6" verbose="1" quick="0" residue_selector1="chB" residue_selector2="not_chB" write_int_area="true" write_median_dist="true" confidence="0"/>
+		<ShapeComplementarity name="scC" min_sc="0.6" verbose="1" quick="0" residue_selector1="chC" residue_selector2="not_chC" write_int_area="true" write_median_dist="true" confidence="0"/>
+			
+		<ContactMolecularSurface name="cmsA" distance_weight="0.5" use_rosetta_radii="true" target_selector="chA" binder_selector="not_chA" confidence="0"/>
+		<ContactMolecularSurface name="cmsB" distance_weight="0.5" use_rosetta_radii="true" target_selector="chB" binder_selector="not_chB" confidence="0"/>
+		<ContactMolecularSurface name="cmsC" distance_weight="0.5" use_rosetta_radii="true" target_selector="chC" binder_selector="not_chC" confidence="0"/>
+</FILTERS>
+
+<MOVERS>
+		<InterfaceAnalyzerMover name="IFA_A" scorefxn="scorefxn" pack_separated="true" interface_sc="true" interface="A_BC" />
+		<InterfaceAnalyzerMover name="IFA_B" scorefxn="scorefxn" pack_separated="true" interface_sc="true" interface="B_AC" />
+		<InterfaceAnalyzerMover name="IFA_C" scorefxn="scorefxn" pack_separated="true" interface_sc="true" interface="C_AB" />
+
+		<SaveProbabilitiesMetricMover name="save_avg_probs" metric="avg_probs" filename="avg_probs" filetype="both" /> 
+		
+		<RunSimpleMetrics name="run_perplexity" metrics="esm_perplexity,mpnn_perplexity,avg_perplexity"/>,mifst_perplexity />
+		<RunSimpleMetrics name="save_current_probs" metrics="current_probs" metric_to_bfactor="current_probs" />
+		
+		<ParsedProtocol name="interface_metrics" >
+			<Add mover="IFA_A" />
+			<Add mover="IFA_B" />
+			<Add mover="IFA_C" />
+
+			<Add filter="scA" />
+			<Add filter="scB" />
+			<Add filter="scC" />
+
+			<Add filter="cmsA" />
+			<Add filter="cmsB" />
+			<Add filter="cmsC" />
+		</ParsedProtocol>
+</MOVERS>
+
+<PROTOCOLS>
+		<Add mover="save_current_probs" />
+		<Add mover="run_perplexity" />
+		<Add mover="save_avg_probs" />
+		<Add mover="interface_metrics" />
+</PROTOCOLS>
+
+<OUTPUT scorefxn="scorefxn" />
+
+
+</ROSETTASCRIPTS>
